@@ -1,0 +1,124 @@
+function fCalculayRS(dia,tm,sr,ss,a1,b1,c1)
+    piecewise(a1*sin(b1*(tm-24*(dia-1))+c1),tm <= ss+24*(dia-1) && tm >= sr+24*(dia-1),0)
+end
+    
+model RadiacionLuz
+# COMPARTIMENTO Y ESPECIES
+#======================================================================================
+    compartment C1;
+    C1 = 1.0;
+    
+    species APX, APXi, ASC, CoI, CoII, DHA, DHAR, GR, GSH, GSSG, MDA,  NADP, NADPH, O2neg, SOD, TRXox, TRXred, PRXox, PRXred, H2O2, H2O, ECBBox, ECBBred; 
+    
+    APX in C1; APXi in C1; ASC in C1; CoI in C1; CoII in C1; DHA in C1; GSH in C1; GSSG in C1;  MDA in C1; NADP in C1; NADPH in C1; O2neg in C1; SOD in C1;  GR in C1; DHAR in C1; TRXox in C1; TRXred in C1; PRXox in C1; PRXred in C1; H2O2 in C1; H2O in C1; ECBBox in C1; ECBBred in C1; # allocate species to appropriate compartment
+#====================================================================================== 
+    O2negdisr1: 2O2neg -> H2O2; k2*O2neg*O2neg; 
+    GRr2: NADPH + GSSG -> NADP + 2GSH; vGR; 
+    GSHDHAr3: 2GSH + DHA -> GSSG + ASC; k3*GSH*DHA; 
+    O2negASCr4: O2neg + ASC -> H2O2 + MDA; k6*O2neg*ASC; 
+    O2negGSHr5: O2neg + 2GSH -> H2O2 + GSSG; k4*GSH*O2neg;
+    ASCH2O2r6: H2O2 + 2ASC -> 2MDA; k5*ASC*H2O2;
+    MDAdis7:2MDA -> DHA + ASC; k1*MDA*MDA;
+    k1APXr8: APX + H2O2 -> CoI; k1APX*APX*H2O2; 
+    k2APXr9: CoI + ASC -> CoII + MDA; k2APX*CoI*ASC; 
+    k3APXr10: CoII + ASC -> APX + MDA; k3APX*CoII*ASC; 
+    k4APXr11: CoI + H2O2 -> APXi; k4APX*CoI*H2O2; #
+    NADPred12: NADP -> NADPH; vF12; 
+    DHARr13: 2GSH + DHA -> GSSG + ASC; vDHAR;
+    NADPHox14: NADPH -> NADP; vFN;
+    MDAred15: MDA -> ASC; vF13; 
+    SODr16: 2O2neg -> H2O2; kSOD*SOD*O2neg;
+    APXr17:  -> APX; vAPX; 
+    O2negr18: -> O2neg; vF11;
+    CP_reductionr20: NADPH + PRXox -> NADP + PRXred; kCP*NADPH*PRXox;
+    CP_H2O2r21: PRXred + H2O2 -> PRXox + 2H2O; kCPH2O2*PRXred*H2O2; 
+    TRX_reductionr22: TRXox -> TRXred; vF14; 
+    TRX_CPr23: TRXred + PRXox -> TRXox + PRXred; kTRX_CP*TRXred*PRXox; 
+    TRX_FBPaser24: TRXred + ECBBox -> TRXox + ECBBred; kFBP*TRXred*ECBBox; 
+#======================================================================================
+    ASC = 10000;
+    APXi = 0; 
+    APX = 40;
+    PRXox = 0;
+    PRXred = 100;
+    DHA = 0;
+    const DHAR = 1.7;
+    const ECBBox = 200;
+    ECBBred = 1;
+    const GR = 1.4;
+    GSH = 4000;
+    GSSG = 0;
+    H2O = 0;
+    H2O2 = 0;
+    MDA = 0;
+    NADPH = 134;
+    NADP = 16;
+    O2neg = 0;
+    CoI = 0;
+    CoII = 0;
+    const SOD = 50;
+    TRXox = 5;
+    TRXred = 0;
+#======================================================================================
+    APX0 = 40;
+    k1 = 1800;
+    k11	= 15000;
+    k12 = 2200;
+    k13	= 15000;
+    k14	= 2e6;
+    k1APX = 43200;
+    k2 = 720;
+    k2APX = 180000;
+    k3 = 0.01;
+    k3APX = 7560;
+    k4 = 2520;
+    k4APX = 2520;
+    k5 = 0.0072;
+    k5APX = 1;
+    k6 = 720;
+    kcatDHAR = 511200;
+    kcatGR = 2.142e6;
+    kCP	= 536.04;
+    kCPH2O2 = 15000; 
+    kFBP = 400;
+    KiDHAKMGSH1 = 500;
+    KMDHA = 70;
+    KMGSH12 = 2500;
+    KMGSSG = 200;
+    KMMDA = 1.4;
+    KMNADPH = 3;
+    KMNADPH2 = 23; 
+    kN_cte = 0.0065;
+    kSOD = 720000;
+    kTRX_CP = 526;
+#======================================================================================
+    vGR:= (kcatGR*GR*NADPH*GSSG)/(KMNADPH*GSSG+KMGSSG*NADPH+NADPH*GSSG);
+    vDHAR:= (kcatDHAR*DHAR*DHA*GSH)/(KiDHAKMGSH1 + KMDHA*GSH + KMGSH12*DHA + DHA*GSH);
+    vSOD:= kSOD*SOD*O2neg;
+    vAPX:= k5APX*(APX0-APX-CoI-CoII);
+    v_APXH:= k1APX*APX*H2O2+k4APX*CoI*H2O2;
+    v_APXMDA:= k2APX*CoI*ASC+k3APX*CoII*ASC
+    kN:= kN_cte*vF12;               
+    vFN:= kN*NADPH;
+    vF11:= (F1*k11)/(k11+2*k12*NADP+k13*MDA+2*k14*TRXox); 
+    vF12:= (F1*2*k12*NADP)/(k11+2*k12*NADP+k13*MDA+2*k14*TRXox);
+    vF13:= (F1*k13*MDA)/(k11+2*k12*NADP+k13*MDA+2*k14*TRXox);              
+    vF14:= (F1*2*k14*TRXox)/(k11+2*k12*NADP+k13*MDA+2*k14*TRXox);
+#======================================================================================
+    dr = pi/180
+    randomDiario = 1
+    randomHorario = 1
+    dia := ceil(time/24);
+    sd := 23.45*dr*sin((2*pi*(dia+284))/365) 
+    ws := acos(-tan(sd)*tan(latitud*dr))
+    wts := ws*(180/(pi*15))
+    sr := 12-wts; # Amanacer
+    ss := 12+wts; # Puesta de sol
+    ld := ss-sr;
+    b1 := pi/ld 
+    c1 := (-pi/ld)*sr
+    F1AUX := fCalculayRS(dia,time,sr,ss,a1,b1,c1) 
+    Factor = 15000;
+    F1RAD:= F1AUX * randomDiario * randomHorario;
+    F1 := F1AUX * randomDiario * randomHorario * Factor;
+#======================================================================================
